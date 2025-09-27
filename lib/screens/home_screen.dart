@@ -1,148 +1,73 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/bets_provider.dart';
+import '../models/bet.dart';
 import '../widgets/live_bet_card.dart';
-import '../widgets/add_bet_dialog.dart';
-import '../widgets/header_stats_bar.dart';
+import '../widgets/profit_chart.dart';
+import 'add_bet_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0;
-  late PageController _pageController;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController(initialPage: 0);
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final betsProvider = context.watch<BetsProvider>();
-
-    // Lists for each tab
-    final allBets = betsProvider.allBets;
-    final liveBets = betsProvider.liveBets;
-    final settledBets = betsProvider.settledBets;
+    final betsProvider = Provider.of<BetsProvider>(context);
+    final liveBets = betsProvider.bets.where((b) => b.status == BetStatus.live).toList();
+    final settledProfit = betsProvider.bets
+        .where((b) => b.status != BetStatus.live)
+        .fold(0.0, (sum, b) => sum + b.profit);
 
     return Scaffold(
-      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.black,
         title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              "assets/logo.png",
-              height: 60,
-            ),
+            Image.asset("assets/logo.png", height: 30), // your app logo
             const SizedBox(width: 8),
-            const Text(
-              "BetTrackr",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 22,
-                color: Colors.white,
-              ),
-            ),
+            const Text("BetTrackr"),
           ],
         ),
-        centerTitle: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline, color: Colors.white),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (_) => AddBetDialog(),
-              );
-            },
-          ),
-        ],
+        centerTitle: true,
       ),
       body: Column(
         children: [
-          const SizedBox(height: 10),
-          const HeaderStatsBar(),
-          const SizedBox(height: 12),
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              onPageChanged: (index) {
-                setState(() {
-                  _selectedIndex = index;
-                });
-              },
+          Container(
+            padding: const EdgeInsets.all(12),
+            child: Column(
               children: [
-                _buildBetList(allBets, "No bets yet. Tap + to add one!"),
-                _buildBetList(liveBets, "No live bets right now."),
-                _buildBetList(settledBets, "No settled bets yet."),
+                Text(
+                  "Settled Profit: \$${settledProfit.toStringAsFixed(2)}",
+                  style: const TextStyle(color: Colors.green, fontSize: 18),
+                ),
+                const SizedBox(height: 8),
+                ProfitChart(bets: betsProvider.bets), // ✅ fixed
               ],
+            ),
+          ),
+          const Divider(),
+          Expanded(
+            child: liveBets.isEmpty
+                ? const Center(
+              child: Text("Your bets will appear here",
+                  style: TextStyle(color: Colors.white70)),
+            )
+                : ListView.builder(
+              itemCount: liveBets.length,
+              itemBuilder: (ctx, i) => LiveBetCard(bet: liveBets[i]),
             ),
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        backgroundColor: Colors.black,
-        selectedItemColor: Colors.greenAccent,
-        unselectedItemColor: Colors.white70,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-            _pageController.animateToPage(
-              index,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-            );
-          });
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.yellow,
+        child: const Icon(Icons.add, color: Colors.black),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => AddBetScreen()),
+          );
         },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list),
-            label: "All",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.play_circle_fill),
-            label: "Live",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.check_circle_outline),
-            label: "Settled",
-          ),
-        ],
       ),
-    );
-  }
-
-  Widget _buildBetList(List bets, String emptyMsg) {
-    if (bets.isEmpty) {
-      return Center(
-        child: Text(
-          emptyMsg,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white70, fontSize: 16),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: bets.length,
-      itemBuilder: (ctx, index) {
-        final bet = bets[index];
-        return LiveBetCard(bet: bet);
-      },
     );
   }
 }

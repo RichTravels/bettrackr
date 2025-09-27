@@ -1,6 +1,6 @@
 // lib/branding/brand_resolver.dart
 import 'package:flutter/material.dart';
-import '../models/sport.dart';
+import '../models/sports.dart';
 
 class TeamBrand {
   final Sport sport;

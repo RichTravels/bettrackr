@@ -1,66 +1,43 @@
-import 'package:flutter/foundation.dart';
+import 'sports.dart';
+import 'nfl.dart';
 
-enum BetResult { win, loss, push, pending }
-enum BetStatus { live, settled }
+enum BetStatus { live, won, lost, push }
 
 class Bet {
   final String id;
-  final String description;
+  final SportType sport;
+  final NflTeam? nflTeam;
+  final String? teamText;
+  final String betType;
+  final double oddsDecimal;
   final double stake;
-  final double odds;
-  final BetResult result;
-  final double profit;
   final BetStatus status;
-  final String team;
-  final String sport;
   final DateTime date;
-  final bool isParlay; // ✅ Added Parlay flag
+  final double profit;
+  final String? notes;
 
   Bet({
     required this.id,
-    required this.description,
-    required this.stake,
-    required this.odds,
-    required this.result,
-    required this.profit,
-    required this.status,
-    required this.team,
     required this.sport,
+    this.nflTeam,
+    this.teamText,
+    required this.betType,
+    required this.oddsDecimal,
+    required this.stake,
+    this.status = BetStatus.live,
     required this.date,
-    this.isParlay = false, // ✅ Default = false
+    this.profit = 0.0,
+    this.notes,
   });
 
-  /// Calculate potential profit
-  double get potentialProfit {
-    return stake * odds - stake;
+  bool get isNFL => sport == SportType.nfl;
+
+  String get displayLabel {
+    if (isNFL && nflTeam != null) {
+      return nflTeamName[nflTeam] ?? nflTeam!.name;
+    }
+    return teamText ?? sport.name;
   }
 
-  /// CopyWith method for updates
-  Bet copyWith({
-    String? id,
-    String? description,
-    double? stake,
-    double? odds,
-    BetResult? result,
-    double? profit,
-    BetStatus? status,
-    String? team,
-    String? sport,
-    DateTime? date,
-    bool? isParlay,
-  }) {
-    return Bet(
-      id: id ?? this.id,
-      description: description ?? this.description,
-      stake: stake ?? this.stake,
-      odds: odds ?? this.odds,
-      result: result ?? this.result,
-      profit: profit ?? this.profit,
-      status: status ?? this.status,
-      team: team ?? this.team,
-      sport: sport ?? this.sport,
-      date: date ?? this.date,
-      isParlay: isParlay ?? this.isParlay,
-    );
-  }
+  double get potentialPayout => stake * oddsDecimal;
 }

@@ -1,8 +1,13 @@
+// lib/main.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import 'providers/bets_provider.dart';
 import 'screens/home_screen.dart';
+import 'screens/add_bet_screen.dart';
+import 'screens/stats_screen.dart';
+import 'screens/nfl_test_screen.dart';
+import 'screens/nba_test_screen.dart';
 
 void main() {
   runApp(const BetTrackrApp());
@@ -19,61 +24,30 @@ class BetTrackrApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         title: 'BetTrackr',
         theme: ThemeData.dark().copyWith(
-          scaffoldBackgroundColor: Colors.grey[900],
           primaryColor: Colors.greenAccent,
-          colorScheme: ColorScheme.dark(
-            primary: Colors.greenAccent,
-            secondary: Colors.greenAccent,
-          ),
+          scaffoldBackgroundColor: Colors.black,
           appBarTheme: const AppBarTheme(
             backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
             elevation: 0,
-            centerTitle: true,
-            iconTheme: IconThemeData(color: Colors.white),
-            titleTextStyle: TextStyle(
-              color: Colors.greenAccent,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
           ),
-          textTheme: const TextTheme(
-            bodyLarge: TextStyle(color: Colors.white),
-            bodyMedium: TextStyle(color: Colors.white70),
-          ),
-          cardTheme: CardThemeData(
-            color: Colors.grey[850],
-            shape: const RoundedRectangleBorder(
+          cardTheme: const CardThemeData(
+            color: Color(0xFF1E1E1E),
+            margin: EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.all(Radius.circular(12)),
             ),
-            elevation: 4,
-            margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-          ),
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.greenAccent,
-              foregroundColor: Colors.black,
-              textStyle: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-            ),
-          ),
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: Colors.grey[850],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            hintStyle: const TextStyle(color: Colors.white54),
-            labelStyle: const TextStyle(color: Colors.greenAccent),
           ),
         ),
-        home: const HomeScreen(),
+        // 🔥 Boot straight into NBA Test screen
+        initialRoute: '/nba-test',
+        routes: {
+          '/': (context) => const HomeScreen(),
+          '/add-bet': (context) => AddBetScreen(),
+          '/stats': (context) => const StatsScreen(),
+          '/nfl-test': (context) => const NflTestScreen(),
+          '/nba-test': (context) => const NbaTestScreen(),
+        },
       ),
     );
   }

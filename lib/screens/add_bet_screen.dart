@@ -1,193 +1,96 @@
-import '../utils/odds.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 import '../models/bet.dart';
+import '../models/sports.dart';
 import '../models/nfl.dart';
-import '../widgets/nfl_team_dropdown.dart';
-import '../providers/settings_provider.dart';
+import '../providers/bets_provider.dart';
 import '../utils/odds.dart';
 
 class AddBetScreen extends StatefulWidget {
-  const AddBetScreen({super.key});
-
   @override
   State<AddBetScreen> createState() => _AddBetScreenState();
 }
 
 class _AddBetScreenState extends State<AddBetScreen> {
-  final _formKey = GlobalKey<FormState>();
-  NflTeam? _team;
-  final _amountCtrl = TextEditingController();
-  final _oddsCtrl = TextEditingController(text: '-110'); // default UX
-  DateTime _date = DateTime.now();
-  String _result = 'push';
-  String _status = 'Live';
-  final String _sport = 'NFL';
+  SportType _sport = SportType.nfl;
+  NflTeam? _nflTeam;
+  String? _teamText;
+  String _betType = "Moneyline";
+  final _stakeController = TextEditingController();
+  final _oddsAmericanController = TextEditingController();
 
-  @override
-  void dispose() {
-    _amountCtrl.dispose();
-    _oddsCtrl.dispose();
-    super.dispose();
-  }
+  void _saveBet() {
+    if (_stakeController.text.isEmpty || _oddsAmericanController.text.isEmpty) return;
 
-  void _save() {
-    if (!_formKey.currentState!.validate()) return;
-
-    final settings = context.read<SettingsProvider>();
-    final fmt = settings.oddsFormat;
-
-    // Parse odds based on current format, store as decimal internally
-    late final double decimalOdds;
-    if (fmt == OddsFormat.american) {
-      final raw = _oddsCtrl.text.trim();
-      final cleaned = raw.replaceAll('+', '');
-      final withSign = cleaned.startsWith('-') ? cleaned : (raw.startsWith('+') ? cleaned : '-$cleaned');
-      final am = int.parse(withSign);
-      decimalOdds = americanToDecimal(am);
-    } else {
-      decimalOdds = double.parse(_oddsCtrl.text.trim());
-    }
+    final stake = double.tryParse(_stakeController.text) ?? 0.0;
+    final oddsAmerican = double.tryParse(_oddsAmericanController.text) ?? -110;
+    final oddsDecimal = americanToDecimal(oddsAmerican);
 
     final bet = Bet(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      team: _team!,
-      amount: double.parse(_amountCtrl.text.trim()),
-      odds: decimalOdds, // store decimal
-      result: _result,
+      id: const Uuid().v4(),
       sport: _sport,
-      date: _date,
-      status: _status,
+      nflTeam: _sport == SportType.nfl ? _nflTeam : null,
+      teamText: _sport != SportType.nfl ? _teamText : null,
+      betType: _betType,
+      oddsDecimal: oddsDecimal,
+      stake: stake,
+      date: DateTime.now(),
     );
 
-    Navigator.of(context).pop(bet);
+    Provider.of<BetsProvider>(context, listen: false).addBet(bet);
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>();
-    final fmt = settings.oddsFormat;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Bet')),
-      body: Form(
-        key: _formKey,
+      appBar: AppBar(title: const Text("Add Bet")),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
         child: ListView(
-          padding: const EdgeInsets.all(16),
           children: [
-            // Odds format toggle
-            SegmentedButton<OddsFormat>(
-              segments: const [
-                ButtonSegment(value: OddsFormat.american, label: Text('American')),
-                ButtonSegment(value: OddsFormat.decimal, label: Text('Decimal')),
-              ],
-              selected: {fmt},
-              onSelectionChanged: (s) => settings.oddsFormat = s.first,
-              style: const ButtonStyle(visualDensity: VisualDensity.compact),
-            ),
-            const SizedBox(height: 12),
-
-            NflTeamDropdown(
-              value: _team,
-              onChanged: (t) => setState(() => _team = t),
-              label: 'NFL Team',
-            ),
-            const SizedBox(height: 12),
-
-            TextFormField(
-              controller: _amountCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Amount',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              validator: (v) =>
-              (v == null || v.trim().isEmpty) ? 'Enter amount' : null,
-            ),
-            const SizedBox(height: 12),
-
-            TextFormField(
-              controller: _oddsCtrl,
-              decoration: InputDecoration(
-                labelText: fmt == OddsFormat.american
-                    ? 'Odds (e.g., -110 or +105)'
-                    : 'Odds (decimal, e.g., 1.91 or 2.05)',
-                border: const OutlineInputBorder(),
-              ),
-              keyboardType: fmt == OddsFormat.american
-                  ? const TextInputType.numberWithOptions(signed: true, decimal: false)
-                  : const TextInputType.numberWithOptions(decimal: true),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Enter odds';
-                final s = v.trim();
-                if (fmt == OddsFormat.american) {
-                  final cleaned = s.replaceAll('+', '');
-                  final parsed = int.tryParse(cleaned.startsWith('-') ? cleaned : cleaned);
-                  if (parsed == null) return 'Use a whole number like -110 or +105';
-                  final withSign = s.startsWith('+') || s.startsWith('-')
-                      ? parsed
-                      : -parsed; // default to negative if no sign
-                  if (withSign.abs() < 100) return 'Must be ≤ -100 or ≥ +100';
-                  return null;
-                } else {
-                  final d = double.tryParse(s);
-                  if (d == null) return 'Enter a number';
-                  if (d <= 1.0) return 'Decimal must be > 1.00';
-                  return null;
-                }
-              },
-            ),
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(child: Text('Date: ${_date.toLocal().toString().split(".").first}')),
-                TextButton(
-                  onPressed: () async {
-                    final d = await showDatePicker(
-                      context: context,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2100),
-                      initialDate: _date,
-                    );
-                    if (d != null) {
-                      setState(() =>
-                      _date = DateTime(d.year, d.month, d.day, _date.hour, _date.minute));
-                    }
-                  },
-                  child: const Text('Pick date'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            DropdownButtonFormField<String>(
-              value: _result,
-              decoration: const InputDecoration(
-                labelText: 'Result',
-                border: OutlineInputBorder(),
-              ),
-              items: const ['win', 'loss', 'push']
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+            DropdownButtonFormField<SportType>(
+              value: _sport,
+              items: SportType.values
+                  .map((s) => DropdownMenuItem(value: s, child: Text(s.name)))
                   .toList(),
-              onChanged: (v) => setState(() => _result = v ?? 'push'),
+              onChanged: (val) => setState(() => _sport = val!),
+              decoration: const InputDecoration(labelText: "Sport"),
             ),
-            const SizedBox(height: 12),
-
-            DropdownButtonFormField<String>(
-              value: _status,
-              decoration: const InputDecoration(
-                labelText: 'Status',
-                border: OutlineInputBorder(),
+            if (_sport == SportType.nfl)
+              DropdownButtonFormField<NflTeam>(
+                value: _nflTeam,
+                items: NflTeam.values
+                    .map((t) => DropdownMenuItem(
+                  value: t,
+                  child: Text(nflTeamName[t]!),
+                ))
+                    .toList(),
+                onChanged: (val) => setState(() => _nflTeam = val),
+                decoration: const InputDecoration(labelText: "NFL Team"),
               ),
-              items: const ['Live', 'Settled']
-                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                  .toList(),
-              onChanged: (v) => setState(() => _status = v ?? 'Live'),
+            TextFormField(
+              decoration: const InputDecoration(labelText: "Bet Type"),
+              initialValue: _betType,
+              onChanged: (val) => setState(() => _betType = val),
             ),
-            const SizedBox(height: 16),
-
-            FilledButton(onPressed: _save, child: const Text('Save Bet')),
+            TextFormField(
+              controller: _stakeController,
+              decoration: const InputDecoration(labelText: "Stake"),
+              keyboardType: TextInputType.number,
+            ),
+            TextFormField(
+              controller: _oddsAmericanController,
+              decoration: const InputDecoration(labelText: "American Odds (-110)"),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _saveBet,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.yellow),
+              child: const Text("Save", style: TextStyle(color: Colors.black)),
+            )
           ],
         ),
       ),

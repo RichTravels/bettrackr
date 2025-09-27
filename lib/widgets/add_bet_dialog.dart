@@ -1,111 +1,81 @@
+// lib/screens/add_bet_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:uuid/uuid.dart';
-import '../models/bet.dart';
 import '../providers/bets_provider.dart';
+import '../models/bet.dart';
+import '../models/nfl.dart';
 
-class AddBetDialog extends StatefulWidget {
-  const AddBetDialog({Key? key}) : super(key: key);
+class AddBetScreen extends StatefulWidget {
+  const AddBetScreen({super.key});
 
   @override
-  State<AddBetDialog> createState() => _AddBetDialogState();
+  State<AddBetScreen> createState() => _AddBetScreenState();
 }
 
-class _AddBetDialogState extends State<AddBetDialog> {
-  final _formKey = GlobalKey<FormState>();
+class _AddBetScreenState extends State<AddBetScreen> {
   final _descriptionController = TextEditingController();
-  final _teamController = TextEditingController();
-  final _sportController = TextEditingController();
-  final _stakeController = TextEditingController();
-  final _oddsController = TextEditingController();
+  double _stake = 0.0;
+  double _odds = 1.0;
+  bool _isParlay = false;
+  NflTeam _selectedTeam = NflTeam.patriots;
 
-  bool _isParlay = false; // ✅ Track parlay checkbox
+  void _submit() {
+    final newBet = Bet(
+      id: DateTime.now().toIso8601String(),
+      description: _descriptionController.text,
+      team: _selectedTeam,
+      stake: _stake,
+      odds: _odds,
+      isParlay: _isParlay,
+      status: BetStatus.live,
+      date: DateTime.now(),
+    );
 
-  void _saveBet() {
-    if (_formKey.currentState!.validate()) {
-      final bet = Bet(
-        id: const Uuid().v4(),
-        description: _descriptionController.text,
-        team: _teamController.text,
-        sport: _sportController.text,
-        stake: double.tryParse(_stakeController.text) ?? 0,
-        odds: double.tryParse(_oddsController.text) ?? 1,
-        result: BetResult.pending,
-        profit: 0,
-        status: BetStatus.live,
-        date: DateTime.now(),
-        isParlay: _isParlay, // ✅ Save parlay option
-      );
-
-      context.read<BetsProvider>().addBet(bet);
-      Navigator.of(context).pop();
-    }
+    Provider.of<BetsProvider>(context, listen: false).addBet(newBet);
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text("Add New Bet"),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(labelText: "Description"),
-                validator: (value) =>
-                value == null || value.isEmpty ? "Enter description" : null,
-              ),
-              TextFormField(
-                controller: _teamController,
-                decoration: const InputDecoration(labelText: "Team"),
-                validator: (value) =>
-                value == null || value.isEmpty ? "Enter team" : null,
-              ),
-              TextFormField(
-                controller: _sportController,
-                decoration: const InputDecoration(labelText: "Sport"),
-                validator: (value) =>
-                value == null || value.isEmpty ? "Enter sport" : null,
-              ),
-              TextFormField(
-                controller: _stakeController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Stake (\$)"),
-                validator: (value) =>
-                value == null || value.isEmpty ? "Enter stake" : null,
-              ),
-              TextFormField(
-                controller: _oddsController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Odds"),
-                validator: (value) =>
-                value == null || value.isEmpty ? "Enter odds" : null,
-              ),
-              const SizedBox(height: 10),
-              CheckboxListTile(
-                value: _isParlay,
-                onChanged: (val) {
-                  setState(() => _isParlay = val ?? false);
-                },
-                title: const Text("Parlay Bet"),
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-            ],
-          ),
+    return Scaffold(
+      appBar: AppBar(title: const Text("Add Bet")),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(labelText: "Description"),
+            ),
+            TextField(
+              decoration: const InputDecoration(labelText: "Stake"),
+              keyboardType: TextInputType.number,
+              onChanged: (val) => _stake = double.tryParse(val) ?? 0.0,
+            ),
+            TextField(
+              decoration: const InputDecoration(labelText: "Odds"),
+              keyboardType: TextInputType.number,
+              onChanged: (val) => _odds = double.tryParse(val) ?? 1.0,
+            ),
+            DropdownButton<NflTeam>(
+              value: _selectedTeam,
+              items: NflTeam.values
+                  .map((team) =>
+                  DropdownMenuItem(value: team, child: Text(team.name)))
+                  .toList(),
+              onChanged: (val) {
+                if (val != null) setState(() => _selectedTeam = val);
+              },
+            ),
+            SwitchListTile(
+              title: const Text("Parlay?"),
+              value: _isParlay,
+              onChanged: (val) => setState(() => _isParlay = val),
+            ),
+            ElevatedButton(onPressed: _submit, child: const Text("Add Bet")),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text("Cancel"),
-        ),
-        ElevatedButton(
-          onPressed: _saveBet,
-          child: const Text("Add Bet"),
-        ),
-      ],
     );
   }
 }

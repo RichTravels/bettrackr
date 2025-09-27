@@ -1,3 +1,4 @@
+// lib/widgets/header_stats_bar.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/bets_provider.dart';
@@ -7,72 +8,53 @@ class HeaderStatsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bets = context.watch<BetsProvider>();
-    final exposure = bets.liveExposure;
-    final pl = bets.settledPL;
-    final streak = bets.winStreak;
+    final betsProvider = Provider.of<BetsProvider>(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(12),
-      ),
+      color: Colors.grey.shade900,
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _StatItem(
-            label: "Live Exposure",
-            value: "\$${exposure.toStringAsFixed(2)}",
-            valueColor: Colors.orange,
+          _buildStat(
+            "Total Bets",
+            betsProvider.allBets.length.toString(),
+            Colors.blue,
           ),
-          _StatItem(
-            label: "Settled P/L",
-            value: "\$${pl.toStringAsFixed(2)}",
-            valueColor: pl >= 0 ? Colors.green : Colors.red,
+          _buildStat(
+            "Stake",
+            "\$${betsProvider.totalStake.toStringAsFixed(2)}",
+            Colors.orange,
           ),
-          _StatItem(
-            label: "Win Streak",
-            value: streak.toString(),
-            valueColor: streak > 0 ? Colors.greenAccent : Colors.grey,
+          _buildStat(
+            "Profit",
+            "\$${betsProvider.totalProfit.toStringAsFixed(2)}",
+            betsProvider.totalProfit >= 0 ? Colors.green : Colors.red,
+          ),
+          _buildStat(
+            "Live",
+            "\$${betsProvider.liveStake.toStringAsFixed(2)}",
+            Colors.purple,
           ),
         ],
       ),
     );
   }
-}
 
-class _StatItem extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color valueColor;
-
-  const _StatItem({
-    required this.label,
-    required this.value,
-    required this.valueColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildStat(String label, String value, Color color) {
     return Column(
       children: [
         Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
           value,
           style: TextStyle(
-            color: valueColor,
             fontSize: 16,
             fontWeight: FontWeight.bold,
+            color: color,
           ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
         ),
       ],
     );

@@ -1,41 +1,57 @@
+// lib/widgets/live_bet_card.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../models/bet.dart';
-import '../providers/bets_provider.dart';
+import '../models/sports.dart';
+import '../utils/nfl_brands.dart';
+import '../utils/nba_brands.dart';
+import 'team_logo.dart';
 
 class LiveBetCard extends StatelessWidget {
   final Bet bet;
-
-  const LiveBetCard({Key? key, required this.bet}) : super(key: key);
+  const LiveBetCard({super.key, required this.bet});
 
   @override
   Widget build(BuildContext context) {
-    return Dismissible(
-      key: ValueKey(bet.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        color: Colors.red,
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        child: const Icon(Icons.delete, color: Colors.white),
-      ),
-      onDismissed: (_) {
-        context.read<BetsProvider>().removeBet(bet);
-      },
-      child: Card(
-        elevation: 3,
-        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        child: ListTile(
-          title: Text(
-            bet.team,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          subtitle: Text(
-            '${bet.sport} | Odds: ${bet.odds} | Stake: \$${bet.stake.toStringAsFixed(2)}',
-          ),
-          trailing: bet.isParlay
-              ? const Icon(Icons.merge_type, color: Colors.orange) // ✅ Parlay icon
-              : null,
+    // Pick brand depending on sport
+    dynamic brand;
+    String sportIcon = "assets/football.png"; // default
+
+    if (bet.sport == SportType.nfl && bet.nflTeam != null) {
+      brand = nflBrands[bet.nflTeam!.name];
+      sportIcon = "assets/football.png";
+    } else if (bet.sport == SportType.nba ||
+        bet.sport == SportType.wnba ||
+        bet.sport == SportType.ncaab) {
+      if (bet.teamText != null) {
+        brand = nbaBrands[bet.teamText!];
+      }
+      sportIcon = "assets/basketball.png";
+    }
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+      elevation: 3,
+      child: ListTile(
+        leading: brand != null
+            ? TeamLogo(
+          brand: brand,
+          sportIcon: sportIcon,
+          size: 56,
+        )
+            : null,
+        title: Text(
+          bet.teamText ?? bet.displayLabel,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          "${bet.betType} • Odds ${bet.oddsDecimal.toStringAsFixed(2)}",
+        ),
+        trailing: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text("Stake: \$${bet.stake.toStringAsFixed(2)}"),
+            Text("To Win: \$${bet.potentialPayout.toStringAsFixed(2)}"),
+          ],
         ),
       ),
     );
